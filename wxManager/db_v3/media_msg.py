@@ -14,13 +14,14 @@ from wxManager.model import DataBaseBase
 
 
 def get_ffmpeg_path():
-    # 获取打包后的资源目录
-    resource_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
-
-    # 构建 FFmpeg 可执行文件的路径
-    ffmpeg_path = os.path.join(resource_dir, 'app', 'resources', 'data', 'ffmpeg.exe')
-
-    return ffmpeg_path
+    from exporter.config import resource_path
+    ffmpeg_path = resource_path('exporter', 'resources', 'ffmpeg.exe')
+    if os.path.exists(ffmpeg_path):
+        return ffmpeg_path
+    ffmpeg_path = os.path.join(os.path.dirname(sys.executable), 'ffmpeg.exe')
+    if os.path.exists(ffmpeg_path):
+        return ffmpeg_path
+    return os.path.join(os.getcwd(), 'ffmpeg.exe')
 
 
 class MediaMsg(DataBaseBase):
@@ -62,16 +63,9 @@ class MediaMsg(DataBaseBase):
             # # 调用 FFmpeg
             if os.path.exists(ffmpeg_path):
                 cmd = f'''"{ffmpeg_path}" -loglevel quiet -y -f s16le -i "{pcm_path}" -ar 44100 -ac 1 "{mp3_path}"'''
-                # system(cmd)
-                # 使用subprocess.run()执行命令
                 subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             else:
-                # 源码运行的时候下面的有效
-                # 这里不知道怎么捕捉异常
-                cmd = f'''"{os.path.join(os.getcwd(), 'app', 'resources', 'data', 'ffmpeg.exe')}" -loglevel quiet -y -f s16le -i "{pcm_path}" -ar 44100 -ac 1 "{mp3_path}"'''
-                # system(cmd)
-                # 使用subprocess.run()执行命令
-                subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                logger.warning(f'ffmpeg not found: {ffmpeg_path}')
             if os.path.exists(silk_path):
                 os.remove(silk_path)
             if os.path.exists(pcm_path):
@@ -79,10 +73,6 @@ class MediaMsg(DataBaseBase):
         except Exception as e:
             print(f"Error: {e}")
             logger.error(f'语音发送错误\n{traceback.format_exc()}')
-            cmd = f'''"{os.path.join(os.getcwd(), 'app', 'resources', 'data', 'ffmpeg.exe')}" -loglevel quiet -y -f s16le -i "{pcm_path}" -ar 44100 -ac 1 "{mp3_path}"'''
-            # system(cmd)
-            # 使用subprocess.run()执行命令
-            subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         finally:
             return mp3_path
 

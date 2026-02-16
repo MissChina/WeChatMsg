@@ -9,6 +9,7 @@ from wxManager.decrypt.decrypt_dat import batch_decode_image_multiprocessing
 from wxManager.log import logger
 from wxManager.model import MessageType, Me
 from exporter.exporter import ExporterBase, copy_files, decode_audios, get_new_filename
+from exporter.config import resource_path
 
 icon_files = {
     'DOCX': ['doc', 'docx'],
@@ -28,11 +29,10 @@ class HtmlExporter(ExporterBase):
         f_name = '.html'
         filename = os.path.join(self.origin_path, f'{self.contact.remark}{f_name}')
         filename = get_new_filename(filename)
-        # 获取当前脚本的目录
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        # 构建要读取的文件路径
-        file_path = os.path.join(current_dir, 'resources', 'template.html')
-        shutil.copytree(os.path.join(current_dir, 'resources', 'emoji'), os.path.join(self.origin_path, 'emoji'),dirs_exist_ok=True)
+        # 获取资源文件路径（兼容PyInstaller打包）
+        file_path = resource_path('exporter', 'resources', 'template.html')
+        emoji_src = resource_path('exporter', 'resources', 'emoji')
+        shutil.copytree(emoji_src, os.path.join(self.origin_path, 'emoji'),dirs_exist_ok=True)
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
             html_head, html_end = content.split('/*注意看这是分割线*/')

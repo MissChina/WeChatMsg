@@ -198,9 +198,8 @@ class ExporterBase(ExporterBaseBase):
         avatar_path = os.path.join(self.origin_path, 'avatar', f'{contact.wxid}.png')
         contact.avatar_path = avatar_path
         if not avatar_buffer:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            # 构建要读取的文件路径
-            file_path = os.path.join(current_dir, 'resources', 'default_avatar.png')
+            from exporter.config import resource_path
+            file_path = resource_path('exporter', 'resources', 'default_avatar.png')
             with open(file_path, 'rb') as f:
                 avatar_buffer = f.read()
         try:
@@ -528,13 +527,17 @@ def copy_files(file_tasks: List[Tuple[str, str, str]]):
 
 
 def get_ffmpeg_path():
-    # 获取打包后的资源目录
-    resource_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
-
-    # 构建 FFmpeg 可执行文件的路径
-    ffmpeg_path = os.path.join(resource_dir, 'ffmpeg.exe')
-    if not os.path.exists(ffmpeg_path):
-        ffmpeg_path = os.path.join(resource_dir, 'resources', 'ffmpeg.exe')
+    from exporter.config import resource_path
+    # 优先从打包资源中查找
+    ffmpeg_path = resource_path('exporter', 'resources', 'ffmpeg.exe')
+    if os.path.exists(ffmpeg_path):
+        return ffmpeg_path
+    # 兼容：ffmpeg.exe 放在 exe 同目录
+    ffmpeg_path = os.path.join(os.path.dirname(sys.executable), 'ffmpeg.exe')
+    if os.path.exists(ffmpeg_path):
+        return ffmpeg_path
+    # 最后尝试当前工作目录
+    ffmpeg_path = os.path.join(os.getcwd(), 'ffmpeg.exe')
     return ffmpeg_path
 
 
@@ -564,27 +567,12 @@ def decode_audio_to_mp3(media_buffer, output_dir, filename):
         # # 调用 FFmpeg
         if os.path.exists(ffmpeg_path):
             cmd = f'''"{ffmpeg_path}" -loglevel quiet -y -f s16le -i "{pcm_path}" -ar 44100 -ac 1 "{mp3_path}"'''
-            # system(cmd)
-            # 使用subprocess.run()执行命令
             subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
-            # 源码运行的时候下面的有效
-            # 这里不知道怎么捕捉异常
-            cmd = f'''"{os.path.join(os.getcwd(), 'app', 'resources', 'data', 'ffmpeg.exe')}" -loglevel quiet -y -f s16le -i "{pcm_path}" -ar 44100 -ac 1 "{mp3_path}"'''
-            # system(cmd)
-            # 使用subprocess.run()执行命令
-            subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # if os.path.exists(silk_path):
-        #     os.remove(silk_path)
-        # if os.path.exists(pcm_path):
-        #     os.remove(pcm_path)
+            logger.warning(f'ffmpeg not found: {ffmpeg_path}')
     except Exception as e:
         print(f"Error: {e}")
         logger.error(f'语音错误\n{traceback.format_exc()}')
-        cmd = f'''"{os.path.join(os.getcwd(), 'app', 'resources', 'data', 'ffmpeg.exe')}" -loglevel quiet -y -f s16le -i "{pcm_path}" -ar 44100 -ac 1 "{mp3_path}"'''
-        # system(cmd)
-        # 使用subprocess.run()执行命令
-        subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     finally:
         return mp3_path
 

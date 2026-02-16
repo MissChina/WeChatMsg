@@ -39,16 +39,33 @@ jobs:
         run: |
           pyinstaller --noconfirm --onefile --console ^
             --name "WeChatMsg-decrypt" ^
+            --paths . ^
             --add-data "wxManager;wxManager" ^
             --hidden-import pymem ^
+            --hidden-import pymem.process ^
+            --hidden-import pymem.pattern ^
             --hidden-import yara ^
             --hidden-import psutil ^
             --hidden-import win32api ^
             --hidden-import win32process ^
+            --hidden-import win32com ^
+            --hidden-import win32com.client ^
+            --hidden-import pythoncom ^
+            --hidden-import ctypes ^
             --hidden-import Crypto ^
             --hidden-import Crypto.Cipher ^
             --hidden-import Crypto.Cipher.AES ^
+            --hidden-import Crypto.Protocol.KDF ^
+            --hidden-import Crypto.Hash.SHA512 ^
+            --hidden-import Crypto.Hash.HMAC ^
             --hidden-import google.protobuf ^
+            --hidden-import google.protobuf.json_format ^
+            --hidden-import zstandard ^
+            --hidden-import lz4 ^
+            --hidden-import lz4.block ^
+            --hidden-import aiofiles ^
+            --hidden-import xmltodict ^
+            --collect-submodules wxManager ^
             example/1-decrypt.py
         shell: cmd
 
@@ -56,27 +73,64 @@ jobs:
         run: |
           pyinstaller --noconfirm --onefile --console ^
             --name "WeChatMsg-export" ^
+            --paths . ^
             --add-data "wxManager;wxManager" ^
             --add-data "exporter;exporter" ^
             --hidden-import pymem ^
+            --hidden-import pymem.process ^
+            --hidden-import pymem.pattern ^
             --hidden-import yara ^
             --hidden-import psutil ^
             --hidden-import win32api ^
             --hidden-import win32process ^
+            --hidden-import win32com ^
+            --hidden-import win32com.client ^
+            --hidden-import pythoncom ^
+            --hidden-import ctypes ^
             --hidden-import Crypto ^
             --hidden-import Crypto.Cipher ^
             --hidden-import Crypto.Cipher.AES ^
+            --hidden-import Crypto.Protocol.KDF ^
+            --hidden-import Crypto.Hash.SHA512 ^
+            --hidden-import Crypto.Hash.HMAC ^
             --hidden-import google.protobuf ^
+            --hidden-import google.protobuf.json_format ^
+            --hidden-import google.protobuf.descriptor ^
+            --hidden-import google.protobuf.descriptor_pool ^
+            --hidden-import google.protobuf.symbol_database ^
+            --hidden-import google.protobuf.reflection ^
+            --hidden-import google.protobuf.message_factory ^
+            --hidden-import zstandard ^
+            --hidden-import lz4 ^
+            --hidden-import lz4.block ^
+            --hidden-import aiofiles ^
+            --hidden-import xmltodict ^
             --hidden-import lxml ^
+            --hidden-import lxml.etree ^
             --hidden-import openpyxl ^
             --hidden-import docx ^
-            --hidden-import aiofiles ^
+            --hidden-import docx.opc ^
+            --hidden-import docx.opc.constants ^
+            --hidden-import docx.oxml ^
+            --hidden-import docx.oxml.ns ^
+            --hidden-import pysilk ^
+            --hidden-import PIL ^
+            --hidden-import PIL.Image ^
+            --hidden-import beautifulsoup4 ^
+            --hidden-import bs4 ^
+            --hidden-import soupsieve ^
+            --collect-submodules wxManager ^
+            --collect-submodules exporter ^
+            --collect-submodules google.protobuf ^
+            --collect-submodules docx ^
             example/export_all.py
         shell: cmd
 
-      - name: Copy ffmpeg
+      - name: Verify build outputs
         run: |
-          copy exporter\resources\ffmpeg.exe dist\ffmpeg.exe
+          dir dist\
+          if not exist dist\WeChatMsg-decrypt.exe (echo ERROR: decrypt exe not found && exit /b 1)
+          if not exist dist\WeChatMsg-export.exe (echo ERROR: export exe not found && exit /b 1)
         shell: cmd
 
       - name: Create archive

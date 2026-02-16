@@ -11,7 +11,15 @@
 
 import json
 import os
+import sys
 from multiprocessing import freeze_support
+
+# 兼容 PyInstaller 打包：添加项目根目录到 sys.path
+if getattr(sys, 'frozen', False):
+    _base = sys._MEIPASS
+else:
+    _base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _base)
 
 from wxManager import Me
 from wxManager.decrypt import get_info_v4, get_info_v3
@@ -23,7 +31,7 @@ def dump_v3():
     """
     解析微信3.x版本的数据库
     """
-    version_list_path = '../wxManager/decrypt/version_list.json'
+    version_list_path = os.path.join(_base, 'wxManager', 'decrypt', 'version_list.json')
     with open(version_list_path, "r", encoding="utf-8") as f:
         version_list = json.loads(f.read())
     r_3 = get_info_v3(version_list)  # 微信3.x

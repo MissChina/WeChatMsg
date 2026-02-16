@@ -13,6 +13,13 @@ import sys
 import time
 from multiprocessing import freeze_support
 
+# 兼容 PyInstaller 打包：添加项目根目录到 sys.path
+if getattr(sys, 'frozen', False):
+    _base = sys._MEIPASS
+else:
+    _base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _base)
+
 # 修复Windows控制台Unicode输出问题（联系人昵称含emoji）
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.stderr.reconfigure(encoding='utf-8', errors='replace')

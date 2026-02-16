@@ -1,4 +1,15 @@
+import os
+import sys
 from enum import Enum
+
+
+def resource_path(*relative_path):
+    """获取资源文件路径，兼容 PyInstaller 打包和源码运行"""
+    if getattr(sys, 'frozen', False):
+        base = sys._MEIPASS
+    else:
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, *relative_path)
 
 
 class FileType(Enum):
