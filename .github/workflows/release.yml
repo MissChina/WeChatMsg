@@ -2,8 +2,8 @@ name: Build and Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
 
 permissions:
   contents: write
@@ -15,6 +15,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Generate version tag
+        id: version
+        shell: bash
+        run: |
+          TAG="v$(date +'%Y.%m.%d')-$(echo ${GITHUB_SHA} | cut -c1-7)"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Generated tag: $TAG"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -74,17 +82,24 @@ jobs:
       - name: Create archive
         run: |
           cd dist
-          7z a -tzip ../WeChatMsg-${{ github.ref_name }}-win-x64.zip *
+          7z a -tzip ../WeChatMsg-${{ steps.version.outputs.tag }}-win-x64.zip *
         shell: cmd
+
+      - name: Create tag
+        shell: bash
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: WeChatMsg ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: WeChatMsg ${{ steps.version.outputs.tag }}
           body: |
             ## 使用方法
 
-            1. 下载并解压 `WeChatMsg-${{ github.ref_name }}-win-x64.zip`
+            1. 下载并解压 `WeChatMsg-${{ steps.version.outputs.tag }}-win-x64.zip`
             2. 确保微信已登录且正在运行
             3. 双击 `WeChatMsg-decrypt.exe` 解密数据库
             4. 双击 `WeChatMsg-export.exe` 一键导出聊天记录
@@ -92,8 +107,8 @@ jobs:
 
             > 若出现闪退请右击选择管理员身份运行
 
-            支持微信版本：3.x / 4.0 / 4.1
+            支持微信版本：3.x / 4.0 / 4.1（最新测试：4.1.5.16）
           files: |
-            WeChatMsg-${{ github.ref_name }}-win-x64.zip
+            WeChatMsg-${{ steps.version.outputs.tag }}-win-x64.zip
           draft: false
           prerelease: false
