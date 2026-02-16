@@ -127,4 +127,12 @@ def main():
 
 if __name__ == '__main__':
     freeze_support()
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        print(f'\n错误：{e}')
+        traceback.print_exc()
+    finally:
+        if getattr(sys, 'frozen', False):
+            input('\n按回车键退出...')

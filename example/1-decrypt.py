@@ -84,6 +84,14 @@ def dump_v4():
 
 if __name__ == '__main__':
     freeze_support()  # 使用多进程必须
-    # 根据自己的微信版本选择使用对应的函数
-    # dump_v3()  # 微信3.x
-    dump_v4()  # 微信4.0
+    try:
+        # 根据自己的微信版本选择使用对应的函数
+        # dump_v3()  # 微信3.x
+        dump_v4()  # 微信4.0
+    except Exception as e:
+        import traceback
+        print(f'\n错误：{e}')
+        traceback.print_exc()
+    finally:
+        if getattr(sys, 'frozen', False):
+            input('\n按回车键退出...')

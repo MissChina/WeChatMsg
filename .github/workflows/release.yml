@@ -22,39 +22,100 @@ jobs:
         run: |
           TAG="v$(date +'%Y.%m.%d')-$(echo ${GITHUB_SHA} | cut -c1-7)"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Generated tag: $TAG"
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.13'
 
       - name: Install dependencies
+        shell: cmd
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
       - name: Build decrypt tool
-        run: pyinstaller --noconfirm WeChatMsg-decrypt.spec
         shell: cmd
+        run: >
+          pyinstaller --noconfirm --onefile --console
+          --name "WeChatMsg-decrypt"
+          --paths .
+          --add-data "wxManager;wxManager"
+          --collect-submodules wxManager
+          --hidden-import pymem
+          --hidden-import pymem.process
+          --hidden-import yara
+          --hidden-import psutil
+          --hidden-import win32api
+          --hidden-import win32process
+          --hidden-import win32com.client
+          --hidden-import pythoncom
+          --hidden-import Crypto.Cipher.AES
+          --hidden-import Crypto.Protocol.KDF
+          --hidden-import Crypto.Hash.SHA512
+          --hidden-import Crypto.Hash.HMAC
+          --hidden-import google.protobuf
+          --hidden-import zstandard
+          --hidden-import lz4.block
+          --hidden-import aiofiles
+          --hidden-import xmltodict
+          example/1-decrypt.py
 
       - name: Build export tool
-        run: pyinstaller --noconfirm WeChatMsg-export.spec
         shell: cmd
+        run: >
+          pyinstaller --noconfirm --onefile --console
+          --name "WeChatMsg-export"
+          --paths .
+          --add-data "wxManager;wxManager"
+          --add-data "exporter;exporter"
+          --collect-submodules wxManager
+          --collect-submodules exporter
+          --collect-submodules google.protobuf
+          --collect-submodules docx
+          --hidden-import pymem
+          --hidden-import pymem.process
+          --hidden-import yara
+          --hidden-import psutil
+          --hidden-import win32api
+          --hidden-import win32process
+          --hidden-import win32com.client
+          --hidden-import pythoncom
+          --hidden-import Crypto.Cipher.AES
+          --hidden-import Crypto.Protocol.KDF
+          --hidden-import Crypto.Hash.SHA512
+          --hidden-import Crypto.Hash.HMAC
+          --hidden-import google.protobuf.json_format
+          --hidden-import google.protobuf.descriptor
+          --hidden-import google.protobuf.descriptor_pool
+          --hidden-import google.protobuf.symbol_database
+          --hidden-import google.protobuf.reflection
+          --hidden-import zstandard
+          --hidden-import lz4.block
+          --hidden-import aiofiles
+          --hidden-import xmltodict
+          --hidden-import lxml.etree
+          --hidden-import openpyxl
+          --hidden-import docx
+          --hidden-import pysilk
+          --hidden-import PIL.Image
+          --hidden-import bs4
+          --hidden-import soupsieve
+          example/export_all.py
 
-      - name: Verify build outputs
+      - name: Verify build
+        shell: cmd
         run: |
           dir dist\
-          if not exist dist\WeChatMsg-decrypt.exe (echo ERROR: decrypt exe not found && exit /b 1)
-          if not exist dist\WeChatMsg-export.exe (echo ERROR: export exe not found && exit /b 1)
-        shell: cmd
+          if not exist dist\WeChatMsg-decrypt.exe (echo ERROR: decrypt not found && exit /b 1)
+          if not exist dist\WeChatMsg-export.exe (echo ERROR: export not found && exit /b 1)
 
       - name: Create archive
+        shell: cmd
         run: |
           cd dist
           7z a -tzip ../WeChatMsg-${{ steps.version.outputs.tag }}-win-x64.zip *
-        shell: cmd
 
       - name: Create tag
         shell: bash
@@ -70,7 +131,7 @@ jobs:
           body: |
             ## 使用方法
 
-            1. 下载并解压 `WeChatMsg-${{ steps.version.outputs.tag }}-win-x64.zip`
+            1. 下载并解压 zip
             2. 确保微信已登录且正在运行
             3. 双击 `WeChatMsg-decrypt.exe` 解密数据库
             4. 双击 `WeChatMsg-export.exe` 一键导出聊天记录
