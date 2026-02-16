@@ -19,7 +19,6 @@ server
 *.ui
 *.pyc
 *.bat
-*.spec
 wordcloud.html
 
 # 导出数据（用户私有）
