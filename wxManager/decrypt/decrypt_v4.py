@@ -18,7 +18,7 @@ SALT_SIZE = 16
 SQLITE_HEADER = b"SQLite format 3"
 
 
-def decrypt_db_file_v4(pkey, in_db_path, out_db_path):
+def decrypt_db_file_v4(pkey, in_db_path, out_db_path, raw_key=False):
     if not os.path.exists(in_db_path):
         print(f"【!!!】{in_db_path} does not exist.")
         return False
@@ -33,10 +33,15 @@ def decrypt_db_file_v4(pkey, in_db_path, out_db_path):
         mac_salt = bytes(x ^ 0x3a for x in salt)
 
         # Convert pkey from hex to bytes
-        passphrase = bytes.fromhex(pkey)
+        if raw_key:
+            # Raw key模式：直接使用密钥，跳过PBKDF2
+            key = bytes.fromhex(pkey)
+        else:
+            # Passphrase模式：通过PBKDF2推导密钥
+            passphrase = bytes.fromhex(pkey)
+            key = PBKDF2(passphrase, salt, dkLen=KEY_SIZE, count=ROUND_COUNT, hmac_hash_module=SHA512)
 
-        # Use PBKDF2 to derive key and mac_key
-        key = PBKDF2(passphrase, salt, dkLen=KEY_SIZE, count=ROUND_COUNT, hmac_hash_module=SHA512)
+        # Use PBKDF2 to derive mac_key (always 2 iterations)
         mac_key = PBKDF2(key, mac_salt, dkLen=KEY_SIZE, count=2, hmac_hash_module=SHA512)
 
         # Write SQLITE_HEADER to the output file
@@ -108,7 +113,7 @@ def decode_wrapper(tasks):
     return decrypt_db_file_v4(*tasks)
 
 
-def decrypt_db_files(key, src_dir: str, dest_dir: str):
+def decrypt_db_files(key, src_dir: str, dest_dir: str, raw_keys=None):
     if not os.path.exists(src_dir):
         print(f"源文件夹 {src_dir} 不存在")
         return
@@ -131,7 +136,21 @@ def decrypt_db_files(key, src_dir: str, dest_dir: str):
                 if not os.path.exists(dest_sub_dir):
                     os.makedirs(dest_sub_dir)
                 print(dest_file_path)
-                decrypt_tasks.append((key, src_file_path, dest_file_path))
-                # decrypt_db_file_v4(key, src_file_path, dest_file_path)
+
+                if raw_keys:
+                    # Raw key模式：根据DB的salt查找对应的密钥
+                    try:
+                        with open(src_file_path, 'rb') as f:
+                            salt_hex = f.read(SALT_SIZE).hex()
+                        db_key = raw_keys.get(salt_hex)
+                        if db_key:
+                            decrypt_tasks.append((db_key, src_file_path, dest_file_path, True))
+                        else:
+                            print(f"  跳过 {file}: 未找到对应的raw key")
+                    except Exception as e:
+                        print(f"  跳过 {file}: {e}")
+                else:
+                    decrypt_tasks.append((key, src_file_path, dest_file_path, False))
+
     with ProcessPoolExecutor(max_workers=16) as executor:
-        results = list(executor.map(decode_wrapper, decrypt_tasks))  # 使用顶层定义的函数
+        results = list(executor.map(decode_wrapper, decrypt_tasks))

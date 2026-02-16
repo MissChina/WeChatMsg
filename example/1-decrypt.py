@@ -66,7 +66,8 @@ def dump_v4():
             print('error! 未找到key，请重启微信后再试')
             continue
         wx_dir = wx_info.wx_dir
-        decrypt_v4.decrypt_db_files(key, src_dir=wx_dir, dest_dir=output_dir)
+        raw_keys = wx_info.raw_keys  # 微信4.1+ per-DB raw key
+        decrypt_v4.decrypt_db_files(key, src_dir=wx_dir, dest_dir=output_dir, raw_keys=raw_keys)
         # 导出的数据库在 output_dir/db_storage 文件夹下，后面会用到
         with open(os.path.join(output_dir, 'db_storage', 'info.json'), 'w', encoding='utf-8') as f:
             json.dump(info_data, f, ensure_ascii=False, indent=4)
@@ -76,5 +77,5 @@ def dump_v4():
 if __name__ == '__main__':
     freeze_support()  # 使用多进程必须
     # 根据自己的微信版本选择使用对应的函数
-    dump_v3()  # 微信3.x
-    # dump_v4() # 微信4.0
+    # dump_v3()  # 微信3.x
+    dump_v4()  # 微信4.0

@@ -31,11 +31,13 @@ class WeChatInfo:
         self.phone = ''
         self.wx_dir = ''
         self.key = ''
+        self.raw_keys = None  # dict: {salt_hex: raw_key_hex} 微信4.1+ per-DB raw key
         self.wxid = ''
         self.errcode: int = 404  # 405: 版本不匹配, 404: 重新登录微信, other: 未知错误
         self.errmsg: str = '错误！请登录微信。'
 
     def __str__(self):
+        raw_keys_info = f'{len(self.raw_keys)} DBs' if self.raw_keys else 'None'
         return f'''
 pid:          {self.pid}
 version:      {self.version}
@@ -45,6 +47,7 @@ phone:        {self.phone}
 wxid:         {self.wxid}
 wx_dir:       {self.wx_dir}
 key:          {self.key}
+raw_keys:     {raw_keys_info}
 '''
 
     def to_json(self):

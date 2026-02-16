@@ -16,11 +16,28 @@ server
 *.db
 *.bin
 *.json
-*.txt
 *.ui
 *.pyc
 *.bat
-*.log
 *.spec
-test*
 wordcloud.html
+
+# 导出数据（用户私有）
+wxid_*/
+export_log*.txt
+
+# 日志文件
+*.log
+
+# 临时调试文件
+test_img/
+test_decrypt.*
+nul
+diag_db.py
+
+# Python
+__pycache__/
+*.egg-info/
+
+# Claude Code
+.claude/

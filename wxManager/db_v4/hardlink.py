@@ -53,38 +53,45 @@ class HardLinkDB(DataBaseBase):
     def get_image_path(self):
         pass
 
+    def _table_name(self, base_name):
+        """自动检测表名版本(v3/v4)"""
+        if not hasattr(self, '_table_cache'):
+            self._table_cache = {}
+        if base_name in self._table_cache:
+            return self._table_cache[base_name]
+        for suffix in ('v4', 'v3'):
+            name = f'{base_name}_{suffix}'
+            try:
+                cursor = self.DB.cursor()
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,))
+                if cursor.fetchone():
+                    self._table_cache[base_name] = name
+                    return name
+            except:
+                pass
+        self._table_cache[base_name] = f'{base_name}_v3'
+        return f'{base_name}_v3'
+
     def create_index(self):
-        sql = "CREATE INDEX IF NOT EXISTS image_hardlink_info_v3_md5 ON image_hardlink_info_v3(md5);"
-        try:
-            cursor = self.DB.cursor()
-            cursor.execute(sql)
-            self.commit()
-            cursor.close()
-        except:
-            pass
+        image_table = self._table_name('image_hardlink_info')
+        video_table = self._table_name('video_hardlink_info')
+        file_table = self._table_name('file_hardlink_info')
 
-        sql = "CREATE INDEX IF NOT EXISTS video_hardlink_info_v3_md5 ON video_hardlink_info_v3(md5);"
-        try:
-            cursor = self.DB.cursor()
-            cursor.execute(sql)
-            self.commit()
-            cursor.close()
-        except:
-            pass
-
-        sql = "CREATE INDEX IF NOT EXISTS file_hardlink_info_v3_md5 ON file_hardlink_info_v3(md5);"
-        try:
-            cursor = self.DB.cursor()
-            cursor.execute(sql)
-            self.commit()
-            cursor.close()
-        except:
-            pass
+        for table in [image_table, video_table, file_table]:
+            sql = f"CREATE INDEX IF NOT EXISTS {table}_md5 ON {table}(md5);"
+            try:
+                cursor = self.DB.cursor()
+                cursor.execute(sql)
+                self.commit()
+                cursor.close()
+            except:
+                pass
 
     def get_image_by_md5(self, md5: str):
-        sql = '''
+        table = self._table_name('image_hardlink_info')
+        sql = f'''
         select file_size,type,file_name,dir2id.username,dir2id2.username,_rowid_,modify_time,extra_buffer
-        from image_hardlink_info_v3
+        from {table}
         join dir2id on dir2id.rowid = dir1
         join dir2id as dir2id2 on dir2id2.rowid=dir2
         where md5=?
@@ -97,9 +104,10 @@ class HardLinkDB(DataBaseBase):
         return None
 
     def get_video_by_md5(self, md5: str):
-        sql = '''
+        table = self._table_name('video_hardlink_info')
+        sql = f'''
         SELECT file_size, type, file_name, dir2id.username, dir2id2.username, _rowid_, modify_time, extra_buffer
-        FROM video_hardlink_info_v3
+        FROM {table}
         JOIN dir2id ON dir2id.rowid = dir1
         LEFT JOIN dir2id AS dir2id2 ON dir2id2.rowid = dir2 AND dir2 != 0
         WHERE md5 = ?
@@ -112,9 +120,10 @@ class HardLinkDB(DataBaseBase):
         return None
 
     def get_file_by_md5(self, md5: str):
-        sql = '''
+        table = self._table_name('file_hardlink_info')
+        sql = f'''
         select file_size,type,file_name,dir2id.username,dir2id2.username,_rowid_,modify_time,extra_buffer
-        from file_hardlink_info_v3
+        from {table}
         join dir2id on dir2id.rowid = dir1
         LEFT JOIN dir2id AS dir2id2 ON dir2id2.rowid = dir2 AND dir2 != 0
         where md5=?
@@ -268,9 +277,12 @@ class HardLinkDB(DataBaseBase):
             return
         try:
             # 获取列名
-            increase_data(db_path, self.cursor, self.DB, 'file_hardlink_info_v3', 'md5', exclude_column='_rowid_')
-            increase_data(db_path, self.cursor, self.DB, 'image_hardlink_info_v3', 'md5', exclude_column='_rowid_')
-            increase_data(db_path, self.cursor, self.DB, 'video_hardlink_info_v3', 'md5', exclude_column='_rowid_')
+            image_table = self._table_name('image_hardlink_info')
+            file_table = self._table_name('file_hardlink_info')
+            video_table = self._table_name('video_hardlink_info')
+            increase_data(db_path, self.cursor, self.DB, file_table, 'md5', exclude_column='_rowid_')
+            increase_data(db_path, self.cursor, self.DB, image_table, 'md5', exclude_column='_rowid_')
+            increase_data(db_path, self.cursor, self.DB, video_table, 'md5', exclude_column='_rowid_')
             increase_data(db_path, self.cursor, self.DB, 'dir2id', 'username')
         except:
             print(f"数据库操作错误: {traceback.format_exc()}")

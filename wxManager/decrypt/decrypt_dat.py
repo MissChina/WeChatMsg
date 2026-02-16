@@ -27,13 +27,42 @@ decode_code = 0
 decode_code_v4 = -1
 
 AES_KEY_MAP = {
-    b'\x07\x08V1\x08\x07': b'cfcd208495d565ef',  # 4.0第一代图片密钥
-    b'\x07\x08V2\x08\x07': b'43e7d25eb1b9bb64',  # 4.0第二代图片密钥，微信4.0.3正式版使用
+    b'\x07\x08V1\x08\x07': [b'cfcd208495d565ef'],  # 4.0第一代图片密钥
+    b'\x07\x08V2\x08\x07': [b'597f9ab165136f2d',   # 4.1第三代图片密钥
+                             b'43e7d25eb1b9bb64'],   # 4.0.3第二代图片密钥
 }
+
+# 缓存已确认有效的密钥，避免每次重复尝试
+_confirmed_aes_key = None
 
 
 def get_aes_key(header):
-    return AES_KEY_MAP.get(header[:6], b'')
+    global _confirmed_aes_key
+    if _confirmed_aes_key:
+        return _confirmed_aes_key
+    keys = AES_KEY_MAP.get(header[:6], [])
+    return keys[0] if keys else b''
+
+
+def try_aes_keys(header, encrypted_block):
+    """尝试所有候选密钥，返回能正确解密的密钥"""
+    global _confirmed_aes_key
+    if _confirmed_aes_key:
+        return _confirmed_aes_key
+    keys = AES_KEY_MAP.get(header[:6], [])
+    for key in keys:
+        try:
+            cipher = AES.new(key, AES.MODE_ECB)
+            dec = cipher.decrypt(encrypted_block[:16])
+            if dec[0] == 0xff and dec[1] == 0xd8 and dec[2] == 0xff:
+                _confirmed_aes_key = key
+                return key
+            if dec[:4] in (b'\x89PNG', b'wxgf', b'GIF8', b'RIFF', b'BM\x00\x00'):
+                _confirmed_aes_key = key
+                return key
+        except Exception:
+            continue
+    return keys[0] if keys else b''
 
 
 def is_v4_image(header):
@@ -186,6 +215,8 @@ def get_image_type(data: bytes) -> str:
         return 'webp'  # WEBP 文件
     elif data.startswith(b'\x00\x00\x01\x00'):
         return 'ico'  # ICO 文件
+    elif data.startswith(b'wxgf'):
+        return 'wxgf'  # 微信4.0+ WXGF 图片格式
     else:
         return 'bin'  # 未知类型，返回二进制
 
@@ -216,7 +247,7 @@ def decode_dat_v4(xor_key: int, file_path, out_path, dst_name='') -> str | bytes
         padding_length = 16 - (len(encrypted_data) % 16)
         encrypted_data += b'\x00' * padding_length
 
-    aes_key = get_aes_key(header)
+    aes_key = try_aes_keys(header, encrypted_data)
 
     # 初始化AES解密器（ECB模式）
     cipher = AES.new(aes_key, AES.MODE_ECB)
@@ -233,13 +264,16 @@ def decode_dat_v4(xor_key: int, file_path, out_path, dst_name='') -> str | bytes
 
     # 移除填充（假设使用的是PKCS7或PKCS5填充）
     pad_length = decrypted_data[-1]  # 获取填充长度
-    decrypted_data = decrypted_data[:-pad_length]
+    if 0 < pad_length <= 16:
+        decrypted_data = decrypted_data[:-pad_length]
 
     # 将解密后的数据写入输出文件
+    rest_len = len(res_data)
+    xor_tail_size = min(0x100000, rest_len)
     with open(output_file, 'wb') as f:
         f.write(decrypted_data)
-        f.write(res_data[0:-0x100000])
-        f.write(bytes([byte ^ xor_key for byte in res_data[-0x100000:]]))
+        f.write(res_data[:rest_len - xor_tail_size])
+        f.write(bytes([byte ^ xor_key for byte in res_data[rest_len - xor_tail_size:]]))
 
     # print(f"解密完成，已保存到: {output_file}")
     return output_file
@@ -268,7 +302,7 @@ async def decode_dat_v4_async(xor_key: int, file_path, out_path, dst_name='') ->
         encrypted_data = await f.read(encrypt_length0)
         res_data = await f.read()
 
-    aes_key = get_aes_key(header)
+    aes_key = try_aes_keys(header, encrypted_data)
 
     # 初始化AES解密器（ECB模式）
     cipher = AES.new(aes_key, AES.MODE_ECB)
@@ -286,13 +320,16 @@ async def decode_dat_v4_async(xor_key: int, file_path, out_path, dst_name='') ->
 
     # 移除填充（假设使用的是PKCS7或PKCS5填充）
     pad_length = decrypted_data[-1]  # 获取填充长度
-    decrypted_data = decrypted_data[:-pad_length]
+    if 0 < pad_length <= 16:
+        decrypted_data = decrypted_data[:-pad_length]
 
     # 将解密后的数据写入输出文件
+    rest_len = len(res_data)
+    xor_tail_size = min(0x100000, rest_len)
     async with aio_open(output_file, 'wb') as f:
         await f.write(decrypted_data)
-        await f.write(res_data[:-0x100000])
-        await f.write(bytes([byte ^ xor_key for byte in res_data[-0x100000:]]))
+        await f.write(res_data[:rest_len - xor_tail_size])
+        await f.write(bytes([byte ^ xor_key for byte in res_data[rest_len - xor_tail_size:]]))
 
     print(f"解密完成，已保存到: {output_file}")
     return output_file

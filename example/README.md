@@ -1,65 +1,98 @@
-## wxManager使用教程
+# wxManager 使用教程
 
-## 1、解析数据
+> 最新支持版本：**微信 4.1.5.16**（同时兼容 3.x 和 4.0）
 
-```shell
-python 1-decrypt.py
+## 环境准备
+
+- Windows 10/11
+- Python 3.10+
+- 微信 PC 版已登录
+
+```bash
+# 安装依赖
+pip install -r requirements.txt
 ```
 
-运行成功之后会生成一个数据库文件夹
-* 如果微信版本是4.0的话数据库文件夹是：`./wxid_xxx/db_storage`
-* 如果微信版本是3.x的话数据库文件夹是：`./wxid_xxx/Msg`
+## 第一步：解密数据库
 
-后面其他操作都会用到这个文件夹
+确保微信正在运行且已登录，然后执行：
 
-## 2、查看联系人
-
-修改 `2-contact.py` 文件的 `db_dir` 为上面得到的文件夹，如果微信是4.0 `db_version` 设置为4，否则设置为3
-
-```shell
-python 2-contact.py
+```bash
+cd WeChatMsg
+python example/1-decrypt.py
 ```
 
-## 3、导出数据
+运行成功后会在当前目录生成 `wxid_xxx/` 文件夹：
+- 微信 4.x → `wxid_xxx/db_storage/`
+- 微信 3.x → `wxid_xxx/Msg/`
+
+## 第二步：一键导出（推荐）
+
+```bash
+python example/export_all.py
+```
+
+自动检测已解密的账号，批量导出所有联系人的 HTML 聊天记录（含图片、视频、文件、语音）。
+
+导出结果在 `wxid_xxx/export_html/聊天记录/` 下，用浏览器打开 `.html` 文件即可查看。
+
+特性：
+- 自动检测所有已解密的微信账号（支持 3.x 和 4.x）
+- 增量导出：已导出的联系人自动跳过
+- 图片自动解密（微信 4.x 的 AES 加密图片）
+
+## 第三步：高级用法
+
+### 查看联系人
+
+修改 `2-contact.py` 中的 `db_dir` 为第一步得到的数据库路径：
 
 ```python
-import time
-from multiprocessing import freeze_support
+db_dir = 'wxid_xxx/db_storage'  # 微信4.x
+db_version = 4
+```
 
-from exporter.config import FileType
-from exporter import HtmlExporter, TxtExporter, AiTxtExporter, DocxExporter, MarkdownExporter, ExcelExporter
-from wxManager import DatabaseConnection, MessageType
+```bash
+python example/2-contact.py
+```
 
+### 按联系人导出
 
-def export():
-    st = time.time()
+修改 `3-exporter.py` 中的参数：
 
-    db_dir = ''  # 解析后的数据库路径，例如：./db_storage
-    db_version = 4  # 数据库版本，4 or 3
+```python
+db_dir = 'wxid_xxx/db_storage'  # 数据库路径
+db_version = 4
+wxid = 'wxid_00112233'          # 目标联系人wxid
+output_dir = './data/'           # 输出目录
+```
 
-    wxid = 'wxid_00112233'  # 要导出好友的wxid
-    output_dir = './data/'  # 输出文件夹
+```bash
+python example/3-exporter.py
+```
 
-    conn = DatabaseConnection(db_dir, db_version)  # 创建数据库连接
-    database = conn.get_interface()  # 获取数据库接口
+### 支持的导出格式
 
-    contact = database.get_contact_by_username(wxid)  # 查找某个联系人
-    exporter = HtmlExporter(
-        database,
-        contact,
-        output_dir=output_dir,
-        type_=FileType.HTML,
-        message_types={MessageType.MergedMessages},  # 要导出的消息类型，默认全导出
-        time_range=['2020-01-01 00:00:00', '2035-03-12 00:00:00'],  # 要导出的日期范围，默认全导出
-        group_members=None  # 指定导出群聊里某个或者几个群成员的聊天记录
-    )
+| 格式 | 说明 |
+|------|------|
+| HTML | 还原微信聊天界面，支持图片/视频/语音/文件 |
+| TXT  | 纯文本 |
+| CSV  | 表格格式 |
+| Word | docx文档 |
+| Markdown | md文档 |
+| Excel | xlsx表格 |
 
-    exporter.start()
-    et = time.time()
-    print(f'耗时：{et - st:.2f}s')
+### 筛选导出
 
+```python
+from wxManager import MessageType
 
-if __name__ == '__main__':
-    freeze_support()
-    export()
+exporter = HtmlExporter(
+    database, contact,
+    output_dir=output_dir,
+    type_=FileType.HTML,
+    message_types={MessageType.Text, MessageType.Image},  # 仅导出文本和图片
+    time_range=['2025-01-01 00:00:00', '2026-01-01 00:00:00'],  # 日期范围
+    group_members={'wxid_a', 'wxid_b'}  # 群聊中仅导出指定成员
+)
 ```
