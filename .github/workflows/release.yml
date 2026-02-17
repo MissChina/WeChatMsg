@@ -35,40 +35,11 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build decrypt tool
+      - name: Build WeChatMsg
         shell: cmd
         run: >
-          pyinstaller --noconfirm --onefile --console
-          --name "WeChatMsg-decrypt"
-          --paths .
-          --add-data "wxManager;wxManager"
-          --collect-submodules wxManager
-          --hidden-import pymem
-          --hidden-import pymem.process
-          --hidden-import yara
-          --hidden-import psutil
-          --hidden-import win32api
-          --hidden-import win32process
-          --hidden-import win32com.client
-          --hidden-import pythoncom
-          --hidden-import Crypto.Cipher.AES
-          --hidden-import Crypto.Protocol.KDF
-          --hidden-import Crypto.Hash.SHA512
-          --hidden-import Crypto.Hash.HMAC
-          --hidden-import google.protobuf
-          --hidden-import zstandard
-          --hidden-import lz4.block
-          --hidden-import aiofiles
-          --hidden-import xmltodict
-          --hidden-import lxml.etree
-          --hidden-import PIL.Image
-          example/1-decrypt.py
-
-      - name: Build export tool
-        shell: cmd
-        run: >
-          pyinstaller --noconfirm --onefile --console
-          --name "WeChatMsg-export"
+          pyinstaller --noconfirm --onefile --windowed --uac-admin
+          --name "WeChatMsg"
           --paths .
           --add-data "wxManager;wxManager"
           --add-data "exporter;exporter"
@@ -76,6 +47,60 @@ jobs:
           --collect-submodules exporter
           --collect-submodules google.protobuf
           --collect-submodules docx
+          --hidden-import PySide6.QtWidgets
+          --hidden-import PySide6.QtCore
+          --hidden-import PySide6.QtGui
+          --exclude-module PySide6.Qt3DAnimation
+          --exclude-module PySide6.Qt3DCore
+          --exclude-module PySide6.Qt3DExtras
+          --exclude-module PySide6.Qt3DInput
+          --exclude-module PySide6.Qt3DLogic
+          --exclude-module PySide6.Qt3DRender
+          --exclude-module PySide6.QtBluetooth
+          --exclude-module PySide6.QtCharts
+          --exclude-module PySide6.QtDataVisualization
+          --exclude-module PySide6.QtGraphs
+          --exclude-module PySide6.QtGraphsWidgets
+          --exclude-module PySide6.QtLocation
+          --exclude-module PySide6.QtMultimedia
+          --exclude-module PySide6.QtMultimediaWidgets
+          --exclude-module PySide6.QtNfc
+          --exclude-module PySide6.QtPdf
+          --exclude-module PySide6.QtPdfWidgets
+          --exclude-module PySide6.QtPositioning
+          --exclude-module PySide6.QtQml
+          --exclude-module PySide6.QtQuick
+          --exclude-module PySide6.QtQuick3D
+          --exclude-module PySide6.QtQuickControls2
+          --exclude-module PySide6.QtQuickWidgets
+          --exclude-module PySide6.QtRemoteObjects
+          --exclude-module PySide6.QtScxml
+          --exclude-module PySide6.QtSensors
+          --exclude-module PySide6.QtSerialBus
+          --exclude-module PySide6.QtSerialPort
+          --exclude-module PySide6.QtSpatialAudio
+          --exclude-module PySide6.QtSql
+          --exclude-module PySide6.QtStateMachine
+          --exclude-module PySide6.QtSvg
+          --exclude-module PySide6.QtSvgWidgets
+          --exclude-module PySide6.QtTest
+          --exclude-module PySide6.QtTextToSpeech
+          --exclude-module PySide6.QtWebChannel
+          --exclude-module PySide6.QtWebEngineCore
+          --exclude-module PySide6.QtWebEngineQuick
+          --exclude-module PySide6.QtWebEngineWidgets
+          --exclude-module PySide6.QtWebSockets
+          --exclude-module PySide6.QtXml
+          --exclude-module PySide6.QtOpenGL
+          --exclude-module PySide6.QtOpenGLWidgets
+          --exclude-module PySide6.QtDesigner
+          --exclude-module PySide6.QtHelp
+          --exclude-module PySide6.QtHttpServer
+          --exclude-module PySide6.QtDBus
+          --exclude-module PySide6.QtAxContainer
+          --exclude-module PySide6.QtConcurrent
+          --exclude-module PySide6.QtPrintSupport
+          --exclude-module PySide6.QtUiTools
           --hidden-import pymem
           --hidden-import pymem.process
           --hidden-import yara
@@ -105,20 +130,13 @@ jobs:
           --hidden-import bs4
           --hidden-import soupsieve
           --hidden-import dateparser
-          example/export_all.py
+          main.py
 
       - name: Verify build
         shell: cmd
         run: |
           dir dist\
-          if not exist dist\WeChatMsg-decrypt.exe (echo ERROR: decrypt not found && exit /b 1)
-          if not exist dist\WeChatMsg-export.exe (echo ERROR: export not found && exit /b 1)
-
-      - name: Create archive
-        shell: cmd
-        run: |
-          cd dist
-          7z a -tzip ../WeChatMsg-${{ steps.version.outputs.tag }}-win-x64.zip *
+          if not exist dist\WeChatMsg.exe (echo ERROR: WeChatMsg.exe not found && exit /b 1)
 
       - name: Create tag
         shell: bash
@@ -134,16 +152,14 @@ jobs:
           body: |
             ## 使用方法
 
-            1. 下载并解压 zip
+            1. 下载 `WeChatMsg.exe`
             2. 确保微信已登录且正在运行
-            3. 双击 `WeChatMsg-decrypt.exe` 解密数据库
-            4. 双击 `WeChatMsg-export.exe` 一键导出聊天记录
-            5. 打开 `wxid_xxx/export_html/聊天记录/` 下的 `.html` 文件查看
-
-            > 若出现闪退请右击选择管理员身份运行
+            3. 双击运行（自动请求管理员权限）
+            4. 点击「一键开始」，自动完成解密+导出
+            5. 完成后点击「打开导出目录」查看 HTML 聊天记录
 
             支持微信版本：3.x / 4.0 / 4.1（最新测试：4.1.5.16）
           files: |
-            WeChatMsg-${{ steps.version.outputs.tag }}-win-x64.zip
+            dist/WeChatMsg.exe
           draft: false
           prerelease: false

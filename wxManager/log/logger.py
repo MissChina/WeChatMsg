@@ -1,19 +1,23 @@
 import logging
 import os
+import sys
 import time
 import traceback
 from functools import wraps
+
 filename = time.strftime("%Y-%m-%d", time.localtime(time.time()))
-logger = logging.getLogger('test')
+logger = logging.getLogger('WeChatMsg')
 logger.setLevel(level=logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-try:
-    if not os.path.exists('./app/log/logs'):
-        os.mkdir('./app/log/logs')
-    file_handler = logging.FileHandler(f'./app/log/logs/{filename}-log.log', encoding='utf-8')
-except:
-    file_handler = logging.FileHandler(f'日志文件-{filename}-log.log', encoding='utf-8')
 
+# 日志文件路径：exe所在目录 或 项目根目录
+if getattr(sys, 'frozen', False):
+    log_dir = os.path.dirname(sys.executable)
+else:
+    log_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+log_file = os.path.join(log_dir, f'WeChatMsg-{filename}.log')
+
+file_handler = logging.FileHandler(log_file, encoding='utf-8')
 file_handler.setLevel(level=logging.INFO)
 file_handler.setFormatter(formatter)
 stream_handler = logging.StreamHandler()
