@@ -28,8 +28,12 @@ export_log*.txt
 # 日志文件
 *.log
 
-# 临时调试文件
+# PyInstaller 生成文件
+*.spec
+
+# 临时调试/测试文件
 test_img/
+test_*_out.txt
 test_decrypt.*
 nul
 diag_db.py
