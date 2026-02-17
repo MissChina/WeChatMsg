@@ -60,6 +60,8 @@ jobs:
           --hidden-import lz4.block
           --hidden-import aiofiles
           --hidden-import xmltodict
+          --hidden-import lxml.etree
+          --hidden-import PIL.Image
           example/1-decrypt.py
 
       - name: Build export tool
@@ -102,6 +104,7 @@ jobs:
           --hidden-import PIL.Image
           --hidden-import bs4
           --hidden-import soupsieve
+          --hidden-import dateparser
           example/export_all.py
 
       - name: Verify build

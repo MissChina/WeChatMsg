@@ -3,13 +3,11 @@ psutil~=6.1.1
 yara-python
 pymem==1.14.0
 zstandard~=0.23.0
-google==3.0.0
 protobuf~=5.29.3
 soupsieve==2.5
 lz4~=4.3.3
 requests~=2.32.3
 xmltodict~=0.14.2
-Crypto~=1.4.1
 pycryptodome
 cryptography
 openpyxl==3.1.5
